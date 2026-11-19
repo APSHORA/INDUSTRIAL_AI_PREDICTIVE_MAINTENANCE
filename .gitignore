@@ -1,0 +1,37 @@
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Virtual Environment
+venv/
+.venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Environment variables
+.env
+
+# Large datasets
+data/raw/
+
+# Processed data
+data/processed/
+
+# Trained models
+models/*.pkl
+models/*.joblib
+models/*.pt
+models/*.pth
+
+# User uploaded files
+media/
+
+# IDE settings
+.vscode/
+
+# Operating system
+.DS_Store
+Thumbs.db
