@@ -1,7 +1,7 @@
-
 # Python cache
 __pycache__/
 *.py[cod]
+*$py.class
 
 # Virtual Environment
 venv/
@@ -14,24 +14,29 @@ env/
 # Environment variables
 .env
 
-# Large datasets
+# Large datasets (Raw data should NEVER be uploaded to GitHub)
 data/raw/
 
-# Processed data
+# Processed data (Keep ignored, as it can be regenerated from notebooks)
 data/processed/
 
-# Trained models
-models/*.pkl
-models/*.joblib
+# Deep Learning models (PyTorch/TensorFlow - these are huge, so ignore them)
 models/*.pt
 models/*.pth
+models/*.bin
+models/*.h5
 
-# User uploaded files
-media/
+# Note: We DO NOT ignore *.joblib here because the hydraulic models are small 
+# and strictly required for the FastAPI backend to run.
+
+# RAG Documents (Large PDFs for the maintenance assistant)
+docs_rag/
 
 # IDE settings
 .vscode/
+.idea/
 
 # Operating system
 .DS_Store
 Thumbs.db
+desktop.ini
