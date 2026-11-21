@@ -1,0 +1,19 @@
+{
+  "project": "Hydraulic Component Condition Classification",
+  "targets": [
+    "cooler_condition",
+    "valve_condition",
+    "pump_leakage",
+    "accumulator_pressure"
+  ],
+  "n_features": 85,
+  "selected_models": {
+    "cooler_condition": "XGBoost",
+    "valve_condition": "XGBoost",
+    "pump_leakage": "XGBoost",
+    "accumulator_pressure": "RandomForest"
+  },
+  "random_state": 42,
+  "input_expected": "features in feature_columns.json order; use the original fitted scaler for raw feature inputs",
+  "limitation": "Component condition classification only; not future failure prediction or RUL."
+}
