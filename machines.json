@@ -1,0 +1,11 @@
+{
+  "machines": [
+    {
+      "id": "hydraulic_rig_1",
+      "type": "hydraulic",
+      "predict_module": "src.hydraulic.predict",
+      "predict_function": "get_prediction",
+      "sensors": ["PS1", "PS2", "PS3", "PS4", "PS5", "PS6", "TS1", "TS2", "TS3", "TS4", "FS1", "FS2", "VS1", "CE", "CP", "SE", "EPS1"]
+    }
+  ]
+}
