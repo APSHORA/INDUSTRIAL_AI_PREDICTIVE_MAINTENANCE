@@ -1,123 +1,84 @@
-# webapp/dashboard.py
+# webapp/dashboard.py  (CONFIG-DRIVEN - now machine-agnostic)
+import sys, json, time
+from pathlib import Path
+from datetime import datetime, timezone
+sys.path.insert(0, str(Path(__file__).parent))
 
 import streamlit as st
 import pandas as pd
 import requests
-import time
-from datetime import datetime, timezone
 from database import get_recent_predictions, DB_PATH
 
-st.set_page_config(
-    page_title="Health Monitoring Dashboard",
-    page_icon="🏭",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+BASE_DIR = Path(__file__).parent.parent
 
-st.title("🏭 Multi-Machine Health Monitoring Dashboard")
-st.markdown("---")
+def load_machines():
+    with open(BASE_DIR / "machines.json") as f:
+        return json.load(f)["machines"]
 
-# ---------- REAL STATUS CHECKS ----------
+MACHINES = load_machines()          # ← সব machine এখান থেকেই আসে
+
 def check_backend():
     try:
-        r = requests.get("http://127.0.0.1:8000/", timeout=1)
-        return r.status_code == 200
+        return requests.get("http://127.0.0.1:8000/", timeout=1).status_code == 200
     except Exception:
         return False
 
-def check_replay_active(predictions):
-    """সর্বশেষ prediction ৫ সেকেন্ডের মধ্যে হলে replay active ধরা হবে"""
-    if not predictions:
-        return False, None
-    try:
-        last_ts = datetime.fromisoformat(predictions[0]["timestamp"])
-        if last_ts.tzinfo is None:
-            last_ts = last_ts.replace(tzinfo=timezone.utc)
-        now = datetime.now(timezone.utc)
-        delta = (now - last_ts).total_seconds()
-        return delta < 5, delta
-    except Exception:
-        return False, None
+@st.cache_data(ttl=2)
+def load_data(mtype, limit_val):
+    return get_recent_predictions(mtype, limit=limit_val)
+
+def status_badge(status):
+    if status == "OK": return st.success(f"### ✅ Status: {status}")
+    if status == "Warning": return st.warning(f"### ⚠️ Status: {status}")
+    return st.error(f"### 🔴 Status: {status}")
+
+def render_machine(machine, preds, limit):
+    mtype = machine["type"]
+    st.subheader(f"📊 {machine['id']} — Live Status")
+    if not preds:
+        st.info(f"⏳ No data for '{mtype}' yet. Run: python replay/service.py --machine {mtype}")
+        return
+    latest = preds[0]
+    status_badge(latest["status"])
+
+    # 🔍 Details — GENERIC loop (যেকোনো machine-এর যেকোনো key auto-render)
+    st.markdown("#### 🔍 Details")
+    cols = st.columns(max(len(latest["details"]), 1))
+    for col, (k, v) in zip(cols, latest["details"].items()):
+        col.metric(k, v)
+
+    # 📜 History
+    st.markdown("#### 📜 Recent Predictions")
+    df = pd.DataFrame(preds)[["timestamp", "machine_id", "status", "details"]]
+    def color(val):
+        return {"OK":"background-color:#90EE90","Warning":"background-color:#FFD700"}.get(val,"background-color:#FF6B6B;color:white")
+    st.dataframe(df.style.map(color, subset=["status"]), width="stretch", height=300)
+    st.bar_chart(df["status"].value_counts())
+
+# ---------- UI ----------
+st.set_page_config(page_title="Health Monitoring Dashboard", page_icon="🏭", layout="wide")
+st.title("🏭 Multi-Machine Health Monitoring Dashboard")
 
 backend_ok = check_backend()
-
 with st.sidebar:
     st.header("⚙️ Controls")
-    auto_refresh = st.checkbox("Auto-refresh (every 2s)", value=True)
+    auto = st.checkbox("Auto-refresh (2s)", value=True)
     limit = st.slider("Show last N cycles", 10, 100, 20)
-
     st.markdown("---")
     st.subheader("System Status (Live)")
-    if backend_ok:
-        st.success("✅ Backend: Running")
-    else:
-        st.error("❌ Backend: DOWN — run `python webapp/main.py`")
+    st.success("✅ Backend: Running") if backend_ok else st.error("❌ Backend: DOWN")
+    st.info(f"🗄️ DB: {DB_PATH.name}")
+    st.info(f"🤖 Machines registered: {len(MACHINES)} → {[m['type'] for m in MACHINES]}")
 
-    st.info(f"🗄️ DB file: {DB_PATH.name}")
-
-# ---------- LOAD DATA ----------
-@st.cache_data(ttl=2)
-def load_data(limit_val):
-    return get_recent_predictions("hydraulic", limit=limit_val)
-
-predictions = load_data(limit)
-replay_ok, age = check_replay_active(predictions)
-
-with st.sidebar:
-    if replay_ok:
-        st.success(f"🔄 Replay: Active ({age:.1f}s ago)")
-    else:
-        st.warning("🔄 Replay: Idle — run `python replay/service.py`")
-
-# ---------- LIVE STATUS CARD ----------
-st.subheader("📊 Live Machine Status")
-
-if predictions:
-    latest = predictions[0]
-    status = latest["status"]
-    if status == "OK":
-        st.success(f"### ✅ Hydraulic Rig 1 — Status: {status}")
-    elif status == "Warning":
-        st.warning(f"### ⚠️ Hydraulic Rig 1 — Status: {status}")
-    else:
-        st.error(f"### 🔴 Hydraulic Rig 1 — Status: {status}")
-
-    st.markdown("#### 🔍 Component Conditions")
-    col1, col2, col3, col4 = st.columns(4)
-    d = latest["details"]
-    col1.metric("Cooler Condition", d.get("cooler_condition", "N/A"))
-    col2.metric("Valve Condition", d.get("valve_condition", "N/A"))
-    col3.metric("Pump Leakage", d.get("pump_leakage", "N/A"))
-    col4.metric("Accumulator Pressure", d.get("accumulator_pressure", "N/A"))
-else:
-    if backend_ok:
-        st.info("⏳ Backend is up but DB is empty. Start the replay service to see live data.")
-    else:
-        st.error("Backend is not running. Start it first.")
-
+st.markdown(f"**Active machines:** {' | '.join(m['id'] for m in MACHINES)}")
 st.markdown("---")
 
-# ---------- HISTORY TABLE ----------
-st.subheader("📜 Recent Predictions History")
-if predictions:
-    df = pd.DataFrame(predictions)
-    df = df[["timestamp", "machine_id", "status", "details"]]
-    def color_status(val):
-        if val == "OK": return "background-color:#90EE90;color:black"
-        if val == "Warning": return "background-color:#FFD700;color:black"
-        return "background-color:#FF6B6B;color:white"
-    st.dataframe(df.style.map(color_status, subset=["status"]),
-                 use_container_width=True, height=400)
+# 🪪 একটা ট্যাব প্রতি machine-এর জন্য (machines.json থেকে অটো)
+tabs = st.tabs([m["type"].upper() for m in MACHINES])
+for tab, machine in zip(tabs, MACHINES):
+    with tab:
+        render_machine(machine, load_data(machine["type"], limit), limit)
 
-    col_chart1, col_chart2 = st.columns(2)
-    with col_chart1:
-        st.bar_chart(df["status"].value_counts())
-    with col_chart2:
-        st.write("**Latest Alert Details:**")
-        st.json(predictions[0]["details"])
-else:
-    st.warning("No data available yet.")
-
-if auto_refresh:
+if auto:
     time.sleep(2)
     st.rerun()

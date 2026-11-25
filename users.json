@@ -1,0 +1,9 @@
+{
+  "users": [
+    {
+      "email": "apshoraahmed770@gmail.com", 
+      "name": "Ahmed",
+      "assigned_machines": ["Jet Engine 1", "hydraulic_rig_1"]
+    }
+  ]
+}

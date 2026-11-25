@@ -6,6 +6,13 @@
       "predict_module": "src.hydraulic.predict",
       "predict_function": "get_prediction",
       "sensors": ["PS1", "PS2", "PS3", "PS4", "PS5", "PS6", "TS1", "TS2", "TS3", "TS4", "FS1", "FS2", "VS1", "CE", "CP", "SE", "EPS1"]
+    },
+    {
+      "id": "jet_engine_1",
+      "type": "engine",
+      "predict_module": "src.engine.predict",
+      "predict_function": "get_prediction",
+      "sensors": ["T2", "T24", "T30", "T50", "P2", "P15", "P30", "Nf", "Nc", "epr", "Ps30", "phi", "NRf", "NRc", "BPR", "farB", "htBleed", "Nf_dmd", "PCNfR_dmd", "W31", "W32"]
     }
   ]
 }
